@@ -164,6 +164,14 @@ router.put('/:id', roleMiddleware('courier', 'admin'), (req: Request, res: Respo
       return;
     }
 
+    const isToday = db.prepare(
+      "SELECT 1 FROM packages WHERE id = ? AND date(entered_at) = date('now','localtime')"
+    ).get(id);
+    if (!isToday) {
+      res.status(400).json({ error: '仅今日入库的快递可以修改收件信息' });
+      return;
+    }
+
     db.prepare(
       'UPDATE packages SET recipient_phone = ?, recipient_name = ? WHERE id = ?'
     ).run(recipient_phone, recipient_name, id);
