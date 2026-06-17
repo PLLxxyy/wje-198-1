@@ -21,6 +21,11 @@ export default function CourierPage() {
   const [loading, setLoading] = useState(false);
   const [packages, setPackages] = useState<Package[]>([]);
   const [listLoading, setListLoading] = useState(false);
+  const [editingPkg, setEditingPkg] = useState<Package | null>(null);
+  const [editPhone, setEditPhone] = useState('');
+  const [editName, setEditName] = useState('');
+  const [editLoading, setEditLoading] = useState(false);
+  const [editResult, setEditResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
 
   useEffect(() => {
     if (tab === 'list') loadToday();
@@ -35,6 +40,44 @@ export default function CourierPage() {
       console.error(err);
     } finally {
       setListLoading(false);
+    }
+  };
+
+  const handleEdit = (pkg: Package) => {
+    setEditingPkg(pkg);
+    setEditPhone(pkg.recipient_phone);
+    setEditName(pkg.recipient_name);
+    setEditResult(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPkg(null);
+    setEditResult(null);
+  };
+
+  const handleSaveEdit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (!editingPkg) return;
+    if (!editPhone.trim() || !editName.trim()) {
+      setEditResult({ type: 'error', message: '请填写所有字段' });
+      return;
+    }
+    setEditLoading(true);
+    try {
+      const data = await api.updatePackage(editingPkg.id, {
+        recipient_phone: editPhone.trim(),
+        recipient_name: editName.trim(),
+      });
+      setEditResult({ type: 'success', message: data.message });
+      setPackages(prev => prev.map(p => p.id === editingPkg.id ? data.package : p));
+      setTimeout(() => {
+        setEditingPkg(null);
+        setEditResult(null);
+      }, 800);
+    } catch (err: any) {
+      setEditResult({ type: 'error', message: err.message });
+    } finally {
+      setEditLoading(false);
     }
   };
 
@@ -158,6 +201,7 @@ export default function CourierPage() {
                     <th>取件码</th>
                     <th>状态</th>
                     <th>入库时间</th>
+                    <th>操作</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -174,12 +218,75 @@ export default function CourierPage() {
                         }
                       </td>
                       <td className="text-sm text-gray">{p.entered_at}</td>
+                      <td>
+                        {p.status === 'pending' ? (
+                          <button className="btn btn-secondary btn-xs" onClick={() => handleEdit(p)}>
+                            编辑
+                          </button>
+                        ) : (
+                          <span className="text-gray text-sm">-</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {editingPkg && (
+        <div className="modal-overlay" onClick={handleCancelEdit}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title">编辑收件信息</div>
+              <button className="modal-close" onClick={handleCancelEdit}>×</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ marginBottom: 16 }}>
+                <span className="text-gray">快递单号：</span>
+                <span className="tracking-no">{editingPkg.tracking_no}</span>
+              </div>
+              <form onSubmit={handleSaveEdit}>
+                <div className="form-group">
+                  <label className="form-label">收件人姓名</label>
+                  <input
+                    className="form-input"
+                    placeholder="收件人姓名"
+                    value={editName}
+                    onChange={e => setEditName(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">收件人手机号</label>
+                  <input
+                    className="form-input"
+                    placeholder="11位手机号"
+                    value={editPhone}
+                    onChange={e => setEditPhone(e.target.value)}
+                    maxLength={11}
+                  />
+                </div>
+                {editResult && (
+                  <div className={`result-card ${editResult.type === 'error' ? 'error' : ''}`}>
+                    <div style={{ fontSize: 14, fontWeight: 600, color: editResult.type === 'success' ? 'var(--success)' : 'var(--danger)' }}>
+                      {editResult.message}
+                    </div>
+                  </div>
+                )}
+                <div style={{ display: 'flex', gap: 12, marginTop: 20 }}>
+                  <button type="button" className="btn btn-secondary" onClick={handleCancelEdit} disabled={editLoading}>
+                    取消
+                  </button>
+                  <button type="submit" className="btn btn-primary" disabled={editLoading}>
+                    {editLoading ? '保存中...' : '保存'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         </div>
       )}
     </>

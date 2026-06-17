@@ -143,4 +143,36 @@ router.get('/all', roleMiddleware('admin'), (req: Request, res: Response) => {
   }
 });
 
+router.put('/:id', roleMiddleware('courier', 'admin'), (req: Request, res: Response) => {
+  try {
+    const id = parseInt(String(req.params.id));
+    const { recipient_phone, recipient_name } = req.body;
+
+    if (!recipient_phone || !recipient_name) {
+      res.status(400).json({ error: '请填写收件人手机号和姓名' });
+      return;
+    }
+
+    const pkg = db.prepare('SELECT * FROM packages WHERE id = ?').get(id) as any;
+    if (!pkg) {
+      res.status(404).json({ error: '未找到该快递' });
+      return;
+    }
+
+    if (pkg.status !== 'pending') {
+      res.status(400).json({ error: '仅待取件的快递可以修改收件信息' });
+      return;
+    }
+
+    db.prepare(
+      'UPDATE packages SET recipient_phone = ?, recipient_name = ? WHERE id = ?'
+    ).run(recipient_phone, recipient_name, id);
+
+    const updated = db.prepare('SELECT * FROM packages WHERE id = ?').get(id);
+    res.json({ package: updated, message: '修改成功' });
+  } catch (err: any) {
+    res.status(500).json({ error: '修改失败: ' + err.message });
+  }
+});
+
 export default router;

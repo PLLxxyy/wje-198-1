@@ -45,6 +45,9 @@ export const api = {
   getAllPackages: (page = 1, limit = 20) =>
     request(`/packages/all?page=${page}&limit=${limit}`),
 
+  updatePackage: (id: number, data: { recipient_phone: string; recipient_name: string }) =>
+    request(`/packages/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+
   // Stats
   getDashboard: () => request('/stats/dashboard'),
 
