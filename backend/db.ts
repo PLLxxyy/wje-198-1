@@ -3,7 +3,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = path.join(__dirname, 'data', 'station.db');
+const DB_PATH = process.env.TEST_DB_PATH || path.join(__dirname, 'data', 'station.db');
 
 import fs from 'fs';
 fs.mkdirSync(path.join(__dirname, 'data'), { recursive: true });
